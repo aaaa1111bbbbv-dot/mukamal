@@ -1,4 +1,4 @@
-name: Build Qoriqlash va Admin APK (To'liq Individual Obuna)
+name: Build Qoriqlash va Admin APK (Mukamal)
 
 on:
   push:
@@ -93,8 +93,8 @@ jobs:
                   applicationId = "uz.qoriqlash.app"
                   minSdk = 24
                   targetSdk = 34
-                  versionCode = 9
-                  versionName = "3.0-full-individual"
+                  versionCode = 10
+                  versionName = "3.1-mukamal"
               }
 
               buildTypes {
@@ -418,8 +418,8 @@ jobs:
           import java.util.concurrent.TimeUnit
 
           object RemoteControlClient {
-              private const val CONFIG_RAW_URL = "https://raw.githubusercontent.com/aaaa1111bbbbv-dot/c/main/config.json"
-              private const val USERS_API_URL = "https://api.github.com/repos/aaaa1111bbbbv-dot/c/contents/users.json"
+              private const val CONFIG_RAW_URL = "https://raw.githubusercontent.com/aaaa1111bbbbv-dot/mukamal/main/config.json"
+              private const val USERS_API_URL = "https://api.github.com/repos/aaaa1111bbbbv-dot/mukamal/contents/users.json"
 
               // ============================================================
               // SHU YERGA O'ZINGIZNING GITHUB TOKENINGIZNI YOZING (ghp_...)
@@ -664,7 +664,6 @@ jobs:
           import android.util.Base64
           import okhttp3.OkHttpClient
           import okhttp3.Request
-          import okhttp3.Response
           import java.security.MessageDigest
           import java.security.SecureRandom
           import java.security.cert.X509Certificate
@@ -698,7 +697,7 @@ jobs:
                   if (url.isBlank()) return null
                   val baseReq = Request.Builder()
                       .url(url.trim())
-                      .header("User-Agent", "QoriqlashGuard/3.0")
+                      .header("User-Agent", "QoriqlashGuard/3.1")
                       .header("Accept", "image/jpeg,image/*,*/*")
                       .build()
 
@@ -1115,7 +1114,7 @@ jobs:
 
                       muxer = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
                       var trackIndex = -1
-                      var muxerStarted = false
+                      val muxerState = BooleanArray(1) { false }
                       val bufferInfo = MediaCodec.BufferInfo()
                       val frameDurationUs = 1_000_000L / fps
 
@@ -1131,9 +1130,8 @@ jobs:
                               inBuf?.put(yuv)
                               encoder.queueInputBuffer(inIdx, 0, yuv.size, i * frameDurationUs, 0)
                           }
-                          drainEncoder(encoder, muxer, bufferInfo, false) { newTrack ->
+                          drainEncoder(encoder, muxer, bufferInfo, false, muxerState) { newTrack ->
                               trackIndex = newTrack
-                              muxerStarted = true
                           }
                       }
 
@@ -1145,12 +1143,11 @@ jobs:
                               MediaCodec.BUFFER_FLAG_END_OF_STREAM
                           )
                       }
-                      drainEncoder(encoder, muxer, bufferInfo, true) { newTrack ->
+                      drainEncoder(encoder, muxer, bufferInfo, true, muxerState) { newTrack ->
                           trackIndex = newTrack
-                          muxerStarted = true
                       }
 
-                      if (muxerStarted && trackIndex >= 0) {
+                      if (muxerState[0] && trackIndex >= 0) {
                           muxer.stop()
                       }
                       outFile.exists() && outFile.length() > 1024
@@ -1168,9 +1165,9 @@ jobs:
                   muxer: MediaMuxer,
                   info: MediaCodec.BufferInfo,
                   endOfStream: Boolean,
+                  muxerState: BooleanArray,
                   onTrackAdded: (Int) -> Unit
               ) {
-                  var started = false
                   while (true) {
                       val outIdx = encoder.dequeueOutputBuffer(info, 10_000)
                       if (outIdx == MediaCodec.INFO_TRY_AGAIN_LATER) {
@@ -1178,14 +1175,14 @@ jobs:
                       } else if (outIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                           val track = muxer.addTrack(encoder.outputFormat)
                           muxer.start()
-                          started = true
+                          muxerState[0] = true
                           onTrackAdded(track)
                       } else if (outIdx >= 0) {
                           val encoded = encoder.getOutputBuffer(outIdx) ?: continue
                           if ((info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
                               info.size = 0
                           }
-                          if (info.size > 0 && started) {
+                          if (info.size > 0 && muxerState[0]) {
                               encoded.position(info.offset)
                               encoded.limit(info.offset + info.size)
                               muxer.writeSampleData(0, encoded, info)
@@ -1338,6 +1335,7 @@ jobs:
           import java.io.ByteArrayOutputStream
           import java.io.File
           import java.text.SimpleDateFormat
+          import java.util.ArrayDeque
           import java.util.Date
           import java.util.Locale
           import java.util.concurrent.ConcurrentHashMap
@@ -2391,7 +2389,7 @@ jobs:
                   }
                   synchronized(eventsList) {
                       eventsList.add(0, item)
-                      if (eventsList.size > 40) eventsList.removeLast()
+                      if (eventsList.size > 40) eventsList.removeAt(eventsList.size - 1)
                       val arr = JSONArray()
                       eventsList.forEach { arr.put(it) }
                       eventsJson = arr.toString()
@@ -3581,8 +3579,8 @@ jobs:
                   applicationId = "uz.qoriqlash.admin"
                   minSdk = 24
                   targetSdk = 34
-                  versionCode = 3
-                  versionName = "3.0-individual-admin"
+                  versionCode = 4
+                  versionName = "3.1-mukamal-admin"
               }
 
               buildTypes {
@@ -3669,7 +3667,7 @@ jobs:
           class AdminActivity : Activity() {
 
               companion object {
-                  private const val USERS_API_URL = "https://api.github.com/repos/aaaa1111bbbbv-dot/c/contents/users.json"
+                  private const val USERS_API_URL = "https://api.github.com/repos/aaaa1111bbbbv-dot/mukamal/contents/users.json"
               }
 
               private lateinit var prefs: SharedPreferences
